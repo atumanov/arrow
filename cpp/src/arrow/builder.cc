@@ -28,6 +28,7 @@
 #include "arrow/type_traits.h"
 #include "arrow/util/bit-util.h"
 #include "arrow/util/logging.h"
+#include "arrow/util/memory-util.h"
 
 namespace arrow {
 
@@ -205,8 +206,14 @@ Status PrimitiveBuilder<T>::Append(
   RETURN_NOT_OK(Reserve(length));
 
   if (length > 0) {
-    std::memcpy(raw_data_ + length_, values,
-        static_cast<std::size_t>(TypeTraits<T>::bytes_required(length)));
+    size_t numbytes =
+        static_cast<std::size_t>(TypeTraits<T>::bytes_required(length));
+    if (numbytes >= MB) {
+      memcopy_block_aligned((uint8_t *)(raw_data_ + length_), (uint8_t *)values,
+                            numbytes);
+    } else {
+      std::memcpy(raw_data_ + length_, values, numbytes);
+    }
   }
 
   // length_ is update by these
