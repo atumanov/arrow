@@ -20,6 +20,7 @@
 
 #include <thread>
 #include <vector>
+#include <chrono>
 
 namespace arrow {
 
@@ -32,6 +33,16 @@ uint8_t* pointer_logical_and(const uint8_t* address, uintptr_t bits) {
 // to saturate the memory bandwidth of modern cpus.
 void parallel_memcopy(uint8_t* dst, const uint8_t* src, int64_t nbytes,
     uintptr_t block_size, int num_threads) {
+
+  //uint8_t* localbuf = (uint8_t*) malloc(nbytes);
+  //memset(localbuf, 0xff, nbytes);
+
+  auto start_time = std::chrono::high_resolution_clock::now();
+  //memcpy(dst, src, nbytes);
+  auto t1 = std::chrono::high_resolution_clock::now();
+  // copy something else into dst
+  //memcpy(dst, localbuf, nbytes);
+#if 1
   std::vector<std::thread> threadpool(num_threads);
   uint8_t* left = pointer_logical_and(src + block_size - 1, ~(block_size - 1));
   uint8_t* right = pointer_logical_and(src + nbytes, ~(block_size - 1));
@@ -62,6 +73,19 @@ void parallel_memcopy(uint8_t* dst, const uint8_t* src, int64_t nbytes,
   for (auto& t : threadpool) {
     if (t.joinable()) { t.join(); }
   }
+#endif
+  auto end_time = std::chrono::high_resolution_clock::now();
+  auto diff_time_us = std::chrono::duration_cast<std::chrono::microseconds>(end_time - start_time).count();
+  std::cout << "parallel_memcopy (us, MiBps): " 
+            << diff_time_us << " "
+            << nbytes/(1.0*diff_time_us)
+            << std::endl;
+  std::cout << "first memcopy (us): "
+            << std::chrono::duration_cast<std::chrono::microseconds>(t1 - start_time).count()
+            << "second memcopy: "
+            << std::chrono::duration_cast<std::chrono::microseconds>(end_time - t1).count()
+            << std::endl;
+
 }
 
 }  // namespace arrow
