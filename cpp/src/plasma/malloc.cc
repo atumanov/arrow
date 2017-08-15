@@ -26,6 +26,9 @@
 #include <unistd.h>
 
 #include <unordered_map>
+#include <iostream>
+#include <cerrno>
+#include <cstring>
 
 #include "plasma/common.h"
 
@@ -40,7 +43,7 @@ int fake_munmap(void*, int64_t);
 #define USE_DL_PREFIX
 #define HAVE_MORECORE 0
 #define DEFAULT_MMAP_THRESHOLD MAX_SIZE_T
-#define DEFAULT_GRANULARITY ((size_t)128U * 1024U)
+#define DEFAULT_GRANULARITY ((size_t) 1024U * 1024U * 1024U) //1GB
 
 #include "thirdparty/dlmalloc.c"  // NOLINT
 
@@ -94,12 +97,22 @@ int create_buffer(int64_t size) {
   constexpr char file_template[] = "/tmp/plasmaXXXXXX";
 #endif
   char file_name[32];
+#define FILE_NAME "/mnt/hugepages/hugepagefile"
   strncpy(file_name, file_template, 32);
-  fd = mkstemp(file_name);
+  //fd = mkstemp(file_name);
+  // create a file descriptor to a hugepage-based file.
+  fd = open(FILE_NAME, O_CREAT | O_RDWR, 0755);
+  if (fd < 0) {
+    printf("create_buffer failed to open file %s\n", FILE_NAME);
+    perror("create_buffer: open failed");
+    exit(1);
+  }
   if (fd < 0) return -1;
   FILE* file = fdopen(fd, "a+");
   if (!file) {
+    perror("create_buffer: fdopen failed");
     close(fd);
+    exit(1);
     return -1;
   }
   if (unlink(file_name) != 0) {
@@ -107,7 +120,9 @@ int create_buffer(int64_t size) {
     return -1;
   }
   if (ftruncate(fd, (off_t)size) != 0) {
+    perror("create_buffer: failed to unlink file");
     ARROW_LOG(FATAL) << "ftruncate error";
+    exit(1);
     return -1;
   }
 #endif
@@ -118,14 +133,25 @@ void* fake_mmap(size_t size) {
   /* Add sizeof(size_t) so that the returned pointer is deliberately not
    * page-aligned. This ensures that the segments of memory returned by
    * fake_mmap are never contiguous. */
+  using namespace std;
   size += sizeof(size_t);
 
   int fd = create_buffer(size);
   ARROW_CHECK(fd >= 0) << "Failed to create buffer during mmap";
   void* pointer = mmap(NULL, size, PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);
   if (pointer == MAP_FAILED) {
+    std::cout << "mmap failed with error : " << std::strerror(errno) << endl;
     return pointer;
   }
+  // Attempt to mlock the mmaped region of memory (best effort).
+  int rv = mlock(pointer, size);
+  if (rv != 0) {
+    cout << "mlock failed with error : " << std::strerror(errno) << endl;
+  }
+  cout << << "mlocking pointer " << pointer << " size " << size << " success " << rv << endl;
+
+  memset(pointer, 0xff, size);
+
 
   /* Increase dlmalloc's allocation granularity directly. */
   mparams.granularity *= GRANULARITY_MULTIPLIER;
