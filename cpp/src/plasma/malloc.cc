@@ -92,27 +92,32 @@ int create_buffer(int64_t size) {
   }
 #else
 #ifdef __linux__
-  constexpr char file_template[] = "/dev/shm/plasmaXXXXXX";
+#define FILE_NAME "/mnt/hugepages/hugepagefile"
+  // if (hugetlbfs) then
+  constexpr char file_template[] = FILE_NAME;
+  // else
+  // constexpr char file_template[] = "/dev/shm/plasmaXXXXXX";
 #else
   constexpr char file_template[] = "/tmp/plasmaXXXXXX";
 #endif
   char file_name[32];
-#define FILE_NAME "/mnt/hugepages/hugepagefile"
+  // TODO(atumanov): for hugetlbfs use hugetlbfs_unlinked_fd_for_size() from hugetlbfs.h
   strncpy(file_name, file_template, 32);
   //fd = mkstemp(file_name);
   // create a file descriptor to a hugepage-based file.
-  fd = open(FILE_NAME, O_CREAT | O_RDWR, 0755);
+  fd = open(file_name, O_CREAT | O_RDWR, 0755);
   if (fd < 0) {
-    printf("create_buffer failed to open file %s\n", FILE_NAME);
     perror("create_buffer: open failed");
-    exit(1);
+    ARROW_LOG(FATAL) << "create_buffer failed to open file " << file_name;
+    return -1;
   }
-  if (fd < 0) return -1;
+  //if (fd < 0) return -1;
   FILE* file = fdopen(fd, "a+");
   if (!file) {
     perror("create_buffer: fdopen failed");
     close(fd);
-    exit(1);
+    ARROW_LOG(FATAL) << "create_buffer: fdopen failed for " << file_name;
+    //exit(1);
     return -1;
   }
   if (unlink(file_name) != 0) {
