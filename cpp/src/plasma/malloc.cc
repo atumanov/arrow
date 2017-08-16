@@ -131,8 +131,12 @@ int create_buffer(int64_t size) {
   }
   if (ftruncate(fd, (off_t)size) != 0) {
     perror("create_buffer: failed to truncate file");
+#ifdef __linux__
+    ARROW_LOG(WARNING) << "create_buffer: ftruncate failed on hugetlbfs-backed file";
+#else
     ARROW_LOG(FATAL) << "ftruncate error";
     return -1;
+#endif
   }
 #endif
   return fd;
