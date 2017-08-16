@@ -116,7 +116,9 @@ int create_buffer(int64_t size) {
     return -1;
   }
   if (unlink(file_name) != 0) {
-    ARROW_LOG(FATAL) << "unlink error";
+    perror("create_buffer: unlink failed");
+    ARROW_LOG(WARNING) << "unlink error";
+    //ARROW_LOG(FATAL) << "unlink error";
     return -1;
   }
   if (ftruncate(fd, (off_t)size) != 0) {
