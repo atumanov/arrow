@@ -116,15 +116,17 @@ int create_buffer(int64_t size) {
     return -1;
   }
   if (unlink(file_name) != 0) {
-    perror("create_buffer: unlink failed");
+    perror("create_buffer: failed to unlink file");
+#ifdef __linux__
     ARROW_LOG(WARNING) << "unlink error";
-    //ARROW_LOG(FATAL) << "unlink error";
+#else
+    ARROW_LOG(FATAL) << "unlink error";
     return -1;
+#endif
   }
   if (ftruncate(fd, (off_t)size) != 0) {
-    perror("create_buffer: failed to unlink file");
+    perror("create_buffer: failed to truncate file");
     ARROW_LOG(FATAL) << "ftruncate error";
-    exit(1);
     return -1;
   }
 #endif
