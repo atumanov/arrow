@@ -138,20 +138,23 @@ void* fake_mmap(size_t size) {
 
   int fd = create_buffer(size);
   ARROW_CHECK(fd >= 0) << "Failed to create buffer during mmap";
-  void* pointer = mmap(NULL, size, PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);
+#ifdef __linux__
+  //void *pointer = mmap(NULL, size, PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);
+  void *pointer = mmap(NULL, size, PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);
   if (pointer == MAP_FAILED) {
-    std::cout << "mmap failed with error : " << std::strerror(errno) << endl;
+    std::cout << "mmap failed with error : " << std::strerror(errno) << std:endl;
     return pointer;
   }
   // Attempt to mlock the mmaped region of memory (best effort).
   int rv = mlock(pointer, size);
   if (rv != 0) {
-    cout << "mlock failed with error : " << std::strerror(errno) << endl;
+    std::cout << "mlock failed with error : " << std::strerror(errno) << std:endl;
   }
-  cout << << "mlocking pointer " << pointer << " size " << size << " success " << rv << endl;
-
+  std::cout << "mlocking pointer " << pointer << " size " << size << " success " << rv << std:endl;
+#else
+  void *pointer = mmap(NULL, size, PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);
+#endif
   memset(pointer, 0xff, size);
-
 
   /* Increase dlmalloc's allocation granularity directly. */
   mparams.granularity *= GRANULARITY_MULTIPLIER;
