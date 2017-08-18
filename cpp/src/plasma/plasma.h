@@ -29,6 +29,7 @@
 
 #include <unordered_map>
 #include <unordered_set>
+#include <string>
 
 #include "arrow/status.h"
 #include "arrow/util/logging.h"
@@ -129,6 +130,8 @@ struct PlasmaStoreInfo {
   /// The amount of memory (in bytes) that we allow to be allocated in the
   /// store.
   int64_t memory_capacity;
+  bool hugetlb_enabled;
+  std::string directory;
 };
 
 /// Get an entry from the object table and return NULL if the object_id

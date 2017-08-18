@@ -39,7 +39,6 @@
 #include <algorithm>
 #include <thread>
 #include <vector>
-#include <chrono>
 
 #include "plasma/common.h"
 #include "plasma/fling.h"
@@ -92,10 +91,7 @@ uint8_t* PlasmaClient::lookup_or_mmap(int fd, int store_fd_val, int64_t map_size
     if (result == MAP_FAILED) {
       ARROW_LOG(FATAL) << "mmap failed";
     }
-    //int rv = mlock(result, map_size);
-    // Best effort mlock: ignore mlock failure. 
-    //std::cout << "client mlock success " << rv << std::endl;
-    close(fd); // PERF: closing or not closing this fd has an effect on performance
+    close(fd); // PERF: closing this fd has an effect on performance.
 
     ClientMmapTableEntry& entry = mmap_table_[store_fd_val];
     entry.pointer = result;
@@ -434,12 +430,7 @@ Status PlasmaClient::Seal(const ObjectID& object_id) {
   object_entry->second->is_sealed = true;
   /// Send the seal request to Plasma.
   static unsigned char digest[kDigestSize];
-  auto ohash_start = std::chrono::high_resolution_clock::now();
   RETURN_NOT_OK(Hash(object_id, &digest[0]));
-  auto ohash_end = std::chrono::high_resolution_clock::now();
-  std::cout << "client compute_object_hash (us) "
-            << std::chrono::duration_cast<std::chrono::microseconds>(ohash_end - ohash_start).count()
-            << std::endl;
   RETURN_NOT_OK(SendSealRequest(store_conn_, object_id, &digest[0]));
   // We call PlasmaClient::Release to decrement the number of instances of this
   // object
@@ -475,7 +466,6 @@ Status PlasmaClient::Hash(const ObjectID& object_id, uint8_t* digest) {
     return Status::PlasmaObjectNonexistent("Object not found");
   }
   // Compute the hash.
-  //uint64_t hash = compute_object_hash(object_buffer);
   uint64_t hash = 0; //compute_object_hash(object_buffer);
   memcpy(digest, &hash, sizeof(hash));
   // Release the plasma object.
