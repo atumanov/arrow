@@ -44,7 +44,7 @@ int fake_munmap(void*, int64_t);
 #define USE_DL_PREFIX
 #define HAVE_MORECORE 0
 #define DEFAULT_MMAP_THRESHOLD MAX_SIZE_T
-#define DEFAULT_GRANULARITY ((size_t)128U * 1024U)
+#define DEFAULT_GRANULARITY ((size_t)1024U * 1024U * 1024U)
 
 #include "thirdparty/dlmalloc.c"  // NOLINT
 
@@ -71,7 +71,7 @@ std::unordered_map<void*, mmap_record> mmap_records;
 
 }  // namespace
 
-constexpr int GRANULARITY_MULTIPLIER = 2;
+constexpr int GRANULARITY_MULTIPLIER = 1;
 
 static void* pointer_advance(void* p, ptrdiff_t n) { return (unsigned char*)p + n; }
 
@@ -137,7 +137,8 @@ void* fake_mmap(size_t size) {
   // MAP_POPULATE can be used to pre-populate the page tables for this memory region
   // which avoids work when accessing the pages later. However it causes long pauses
   // when mmapping the files. Only supported on Linux.
-  void* pointer = mmap(NULL, size, PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);
+  //void* pointer = mmap(NULL, size, PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);
+  void* pointer = mmap(NULL, size, PROT_READ | PROT_WRITE, MAP_SHARED | MAP_HUGETLB, fd, 0);
   if (pointer == MAP_FAILED) {
     ARROW_LOG(ERROR) << "mmap failed with error: " << std::strerror(errno);
     if (errno == ENOMEM && plasma::plasma_config->hugepages_enabled) {

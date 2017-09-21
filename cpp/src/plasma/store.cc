@@ -645,6 +645,7 @@ class PlasmaStoreRunner {
     store_.reset(
         new PlasmaStore(loop_.get(), system_memory, directory, hugepages_enabled));
     plasma_config = store_->get_plasma_store_info();
+    //dlmalloc(1024);
     int socket = bind_ipc_sock(socket_name, true);
     // TODO(pcm): Check return value.
     ARROW_CHECK(socket >= 0);
