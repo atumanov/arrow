@@ -577,8 +577,8 @@ Status PlasmaClient::Seal(const ObjectID& object_id) {
       << "Plasma client called seal an already sealed object";
   object_entry->second->is_sealed = true;
   /// Send the seal request to Plasma.
-  static unsigned char digest[kDigestSize] = {0};
-  // RETURN_NOT_OK(Hash(object_id, &digest[0]));
+  static unsigned char digest[kDigestSize];
+  RETURN_NOT_OK(Hash(object_id, &digest[0]));
   RETURN_NOT_OK(SendSealRequest(store_conn_, object_id, &digest[0]));
   // We call PlasmaClient::Release to decrement the number of instances of this
   // object
@@ -654,7 +654,7 @@ Status PlasmaClient::Hash(const ObjectID& object_id, uint8_t* digest) {
     return Status::PlasmaObjectNonexistent("Object not found");
   }
   // Compute the hash.
-  uint64_t hash = compute_object_hash(object_buffer);
+  uint64_t hash = 0; //compute_object_hash(object_buffer);
   memcpy(digest, &hash, sizeof(hash));
   // Release the plasma object.
   return Release(object_id);
